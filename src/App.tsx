@@ -5,12 +5,14 @@ import Signup from "./pages/Signup";
 import CreatePost from "./pages/CreatePost";
 import Feed from "./pages/Feed";
 import PostPage from "./pages/PostPage";
+import Navbar from "./components/Navbar";
 
 const App = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
 
   return (
     <BrowserRouter>
+      <Navbar />
       <Routes>
         <Route
           path="/login"
@@ -25,31 +27,6 @@ const App = () => {
           element={user ? <CreatePost /> : <Navigate to="/login" />}
         />
         <Route path="/post/:id" element={<PostPage />} />
-        {/* <Route
-          path="/"
-          element={
-            user ? (
-              <div className="p-8">
-                <h1 className="text-2xl font-bold">Welcome to Chatter! 🎉</h1>
-
-                <button
-                  onClick={signOut}
-                  className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg"
-                >
-                  Sign Out
-                </button>
-                <a
-                  href="/create"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg"
-                >
-                  Create Post
-                </a>
-              </div>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        /> */}
         <Route path="/" element={user ? <Feed /> : <Navigate to="/login" />} />
       </Routes>
     </BrowserRouter>

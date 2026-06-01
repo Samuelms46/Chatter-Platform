@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import MDEditor from "@uiw/react-md-editor";
+import Comments from "../components/Comments";
+import LikeButton from "../components/LikeButton";
 
 interface Post {
   id: string;
@@ -78,6 +80,11 @@ const PostPage = () => {
       <div data-color-mode="light">
         <MDEditor.Markdown source={post.content} />
       </div>
+      <div className="mt-8 pt-6 border-t">
+        <LikeButton postId={post.id} />
+      </div>
+
+      <Comments postId={post.id} />
     </div>
   );
 };
