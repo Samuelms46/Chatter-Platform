@@ -6,6 +6,9 @@ import CreatePost from "./pages/CreatePost";
 import Feed from "./pages/Feed";
 import PostPage from "./pages/PostPage";
 import Navbar from "./components/Navbar";
+import ProfilePage from "./pages/ProfilePage";
+import Settings from "./pages/Settings";
+import Search from "./pages/Search";
 
 const App = () => {
   const { user } = useAuth();
@@ -28,6 +31,12 @@ const App = () => {
         />
         <Route path="/post/:id" element={<PostPage />} />
         <Route path="/" element={user ? <Feed /> : <Navigate to="/login" />} />
+        <Route path="/profile/:username" element={<ProfilePage />} />
+        <Route
+          path="/settings"
+          element={user ? <Settings /> : <Navigate to="/login" />}
+        />
+        <Route path="/search" element={<Search />} />
       </Routes>
     </BrowserRouter>
   );

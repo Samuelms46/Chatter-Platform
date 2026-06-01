@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import MDEditor from "@uiw/react-md-editor";
 import Comments from "../components/Comments";
 import LikeButton from "../components/LikeButton";
+import BookmarkButton from "../components/BookmarkButton";
 
 interface Post {
   id: string;
@@ -82,6 +83,7 @@ const PostPage = () => {
       </div>
       <div className="mt-8 pt-6 border-t">
         <LikeButton postId={post.id} />
+        <BookmarkButton postId={post.id} />
       </div>
 
       <Comments postId={post.id} />

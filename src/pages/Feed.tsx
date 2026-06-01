@@ -64,9 +64,12 @@ const Feed = () => {
                 <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold">
                   {post.profiles?.username?.[0]?.toUpperCase()}
                 </div>
-                <span className="text-sm text-gray-600">
+                <Link
+                  to={`/profile/${post.profiles?.username}`}
+                  className="text-sm text-gray-600 hover:text-blue-600"
+                >
                   {post.profiles?.username}
-                </span>
+                </Link>
                 <span className="text-gray-300">·</span>
                 <span className="text-sm text-gray-400">
                   {post.read_time} min read
