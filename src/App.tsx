@@ -2,7 +2,7 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import CreatePost from "./pages/Createpost";
+import CreatePost from "./pages/CreatePost";
 import Feed from "./pages/Feed";
 import PostPage from "./pages/PostPage";
 import Navbar from "./components/Navbar";
