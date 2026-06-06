@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -28,13 +28,17 @@ const ProfilePage = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [followerCount, setFollowerCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    if (!username) return;
+    (async () => {
       const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
-        .eq("username", username)
+        .ilike("username", username)
         .single();
 
       if (profileData) {
@@ -46,24 +50,62 @@ const ProfilePage = () => {
           .eq("author_id", profileData.id)
           .eq("is_published", true)
           .order("created_at", { ascending: false });
-
         setPosts(postsData || []);
 
-        const { data: followData } = await supabase
+        // Count-only query — no row data transferred
+        const { count } = await supabase
           .from("follows")
-          .select("*")
+          .select("id", { count: "exact", head: true })
           .eq("following_id", profileData.id);
-
-        setFollowerCount(followData?.length || 0);
+        setFollowerCount(count ?? 0);
       }
 
       setLoading(false);
-    };
-
-    fetchProfile();
+    })();
   }, [username]);
 
-  if (loading) return <div className="p-8 text-center">Loading profile...</div>;
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAvatarError(null);
+    const file = e.target.files?.[0];
+    if (!file || !user || !profile) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError("Image too large (max 2 MB).");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/avatar_${Date.now()}.${ext}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(path);
+
+      const { error: updateErr } = await supabase
+        .from("profiles")
+        .update({ avatar_url: urlData.publicUrl })
+        .eq("id", user.id);
+      if (updateErr) throw updateErr;
+
+      setProfile((prev) =>
+        prev ? { ...prev, avatar_url: urlData.publicUrl } : prev,
+      );
+    } catch (err: unknown) {
+      setAvatarError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center">Loading profile…</div>;
   if (!profile)
     return <div className="p-8 text-center">Profile not found.</div>;
 
@@ -71,13 +113,42 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      {/* Profile Header */}
       <div className="bg-white border rounded-xl p-6 mb-8">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-bold">
-              {profile.username[0].toUpperCase()}
+            {/* Avatar — clickable on own profile to trigger upload */}
+            <div className="relative">
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.username}
+                  className="w-16 h-16 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-bold">
+                  {profile.username[0].toUpperCase()}
+                </div>
+              )}
+              {isOwnProfile && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingAvatar}
+                    className="absolute inset-0 rounded-full bg-black/40 text-white text-xs opacity-0 hover:opacity-100 transition flex items-center justify-center"
+                  >
+                    {uploadingAvatar ? "…" : "Change"}
+                  </button>
+                </>
+              )}
             </div>
+
             <div>
               <h1 className="text-2xl font-bold">@{profile.username}</h1>
               <p className="text-gray-500 text-sm mt-1">
@@ -104,21 +175,26 @@ const ProfilePage = () => {
             <FollowButton
               profileId={profile.id}
               onFollowChange={(isFollowing) =>
-                setFollowerCount((count) => count + (isFollowing ? 1 : -1))
+                setFollowerCount((c) => c + (isFollowing ? 1 : -1))
               }
             />
           )}
         </div>
 
+        {avatarError && (
+          <p className="text-red-500 text-xs mt-2">{avatarError}</p>
+        )}
+
+        {/* Stats row */}
         <div className="mt-4 pt-4 border-t flex gap-6">
           <div className="text-center">
             <p className="font-bold text-lg">{posts.length}</p>
             <p className="text-gray-500 text-xs">Posts</p>
           </div>
-        </div>
-        <div className="text-center">
-          <p className="font-bold text-lg">{followerCount}</p>
-          <p className="text-gray-500 text-xs">Followers</p>
+          <div className="text-center">
+            <p className="font-bold text-lg">{followerCount}</p>
+            <p className="text-gray-500 text-xs">Followers</p>
+          </div>
         </div>
       </div>
 
@@ -139,9 +215,9 @@ const ProfilePage = () => {
                 </h3>
               </Link>
               <p className="text-gray-500 text-sm mb-3 line-clamp-2">
-                {post.content.replace(/[#*`]/g, "").slice(0, 120)}...
+                {post.content.replace(/[#*`_~>[\]!]/g, "").slice(0, 120)}…
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {post.tags?.map((tag) => (
                   <span
                     key={tag}

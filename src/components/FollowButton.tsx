@@ -13,19 +13,16 @@ const FollowButton = ({ profileId, onFollowChange }: Props) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchFollow = async () => {
-      const { data: followers } = await supabase
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
         .from("follows")
-        .select("*")
-        .eq("following_id", profileId);
-
-      if (user) {
-        const isFollowing = followers?.some((f) => f.follower_id === user.id);
-        setFollowing(!!isFollowing);
-      }
-    };
-
-    fetchFollow();
+        .select("id")
+        .eq("follower_id", user.id)
+        .eq("following_id", profileId)
+        .maybeSingle();
+      setFollowing(!!data);
+    })();
   }, [profileId, user]);
 
   const toggleFollow = async () => {
@@ -36,8 +33,8 @@ const FollowButton = ({ profileId, onFollowChange }: Props) => {
       await supabase
         .from("follows")
         .delete()
-        .eq("following_id", profileId)
-        .eq("follower_id", user.id);
+        .eq("follower_id", user.id)
+        .eq("following_id", profileId);
       setFollowing(false);
       onFollowChange?.(false);
     } else {
@@ -52,19 +49,19 @@ const FollowButton = ({ profileId, onFollowChange }: Props) => {
     setLoading(false);
   };
 
-  if (user?.id === profileId) return null;
+  if (!user || user.id === profileId) return null;
 
   return (
     <button
       onClick={toggleFollow}
       disabled={loading}
-      className={`px-5 py-2 rounded-full text-sm font-medium transition ${
+      className={`px-5 py-2 rounded-full text-sm font-medium transition disabled:opacity-50 ${
         following
           ? "bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-500 border"
           : "bg-blue-600 text-white hover:bg-blue-700"
       }`}
     >
-      {following ? "Unfollow" : "Follow"}
+      {loading ? "…" : following ? "Unfollow" : "Follow"}
     </button>
   );
 };

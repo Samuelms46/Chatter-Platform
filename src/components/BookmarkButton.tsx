@@ -12,19 +12,16 @@ const BookmarkButton = ({ postId }: Props) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchBookmark = async () => {
-      if (!user) return;
+    if (!user) return;
+    (async () => {
       const { data } = await supabase
         .from("bookmarks")
-        .select("*")
+        .select("id")
         .eq("post_id", postId)
         .eq("user_id", user.id)
-        .single();
-
+        .maybeSingle();
       setBookmarked(!!data);
-    };
-
-    fetchBookmark();
+    })();
   }, [postId, user]);
 
   const toggleBookmark = async () => {
@@ -39,10 +36,9 @@ const BookmarkButton = ({ postId }: Props) => {
         .eq("user_id", user.id);
       setBookmarked(false);
     } else {
-      await supabase.from("bookmarks").insert({
-        post_id: postId,
-        user_id: user.id,
-      });
+      await supabase
+        .from("bookmarks")
+        .insert({ post_id: postId, user_id: user.id });
       setBookmarked(true);
     }
 
@@ -53,7 +49,7 @@ const BookmarkButton = ({ postId }: Props) => {
     <button
       onClick={toggleBookmark}
       disabled={loading}
-      className={`flex items-center gap-2 px-4 py-2 rounded-full border transition ${
+      className={`flex items-center gap-2 px-4 py-2 rounded-full border transition disabled:opacity-50 ${
         bookmarked
           ? "bg-yellow-50 border-yellow-400 text-yellow-600"
           : "border-gray-300 text-gray-500 hover:border-yellow-400 hover:text-yellow-600"

@@ -13,21 +13,23 @@ const LikeButton = ({ postId }: Props) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchLikes = async () => {
-      const { data } = await supabase
+    (async () => {
+      const { count: total } = await supabase
         .from("likes")
-        .select("*")
+        .select("id", { count: "exact", head: true })
         .eq("post_id", postId);
-
-      setCount(data?.length || 0);
+      setCount(total ?? 0);
 
       if (user) {
-        const userLiked = data?.some((like) => like.user_id === user.id);
-        setLiked(!!userLiked);
+        const { data } = await supabase
+          .from("likes")
+          .select("id")
+          .eq("post_id", postId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        setLiked(!!data);
       }
-    };
-
-    fetchLikes();
+    })();
   }, [postId, user]);
 
   const toggleLike = async () => {
@@ -43,10 +45,9 @@ const LikeButton = ({ postId }: Props) => {
       setCount((c) => c - 1);
       setLiked(false);
     } else {
-      await supabase.from("likes").insert({
-        post_id: postId,
-        user_id: user.id,
-      });
+      await supabase
+        .from("likes")
+        .insert({ post_id: postId, user_id: user.id });
       setCount((c) => c + 1);
       setLiked(true);
     }
@@ -57,7 +58,8 @@ const LikeButton = ({ postId }: Props) => {
   return (
     <button
       onClick={toggleLike}
-      className={`flex items-center gap-2 px-4 py-2 rounded-full border transition ${
+      disabled={loading}
+      className={`flex items-center gap-2 px-4 py-2 rounded-full border transition disabled:opacity-50 ${
         liked
           ? "bg-red-50 border-red-300 text-red-500"
           : "border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500"
