@@ -13,7 +13,7 @@ interface Notification {
 }
 
 const Navbar = () => {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -26,18 +26,19 @@ const Navbar = () => {
     if (!user) return;
 
     const fetchNotifications = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("notifications")
-        .select(`*, actor:actor_id(username)`)
+        .select(`*, actor:profiles!notifications_actor_id_fkey(username)`)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(20);
+
+      console.log("notifications data:", data);
+      console.log("notifications error:", error);
       if (data) setNotifications(data as Notification[]);
     };
-
     void fetchNotifications();
 
-    // Realtime — new notifications appear instantly
     const channel = supabase
       .channel(`notifications:${user.id}`)
       .on(
@@ -59,7 +60,6 @@ const Navbar = () => {
     };
   }, [user]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -76,7 +76,6 @@ const Navbar = () => {
   const handleBellClick = async () => {
     setOpen((v) => !v);
     if (!open && unreadCount > 0) {
-      // Mark all as read
       await supabase
         .from("notifications")
         .update({ read: true })
@@ -207,6 +206,27 @@ const Navbar = () => {
                   </div>
                 )}
               </div>
+
+              {/* User avatar + username linking to their profile */}
+              <Link
+                to={`/profile/${profile?.username}`}
+                className="flex items-center gap-2 hover:opacity-80 transition"
+              >
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.username}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold">
+                    {profile?.username?.[0]?.toUpperCase()}
+                  </div>
+                )}
+                <span className="text-sm font-medium text-gray-700 hidden md:block">
+                  {profile?.username}
+                </span>
+              </Link>
 
               <button
                 onClick={signOut}

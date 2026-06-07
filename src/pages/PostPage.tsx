@@ -7,6 +7,7 @@ import DOMPurify from "dompurify";
 import Comments from "../components/Comments";
 import LikeButton from "../components/LikeButton";
 import BookmarkButton from "../components/BookmarkButton";
+import { useAuth } from "../context/AuthContext";
 
 interface Post {
   id: string;
@@ -21,9 +22,9 @@ interface Post {
   };
 }
 
-// Sanitize the raw Markdown string before passing it to the renderer.
+// Sanitizes the raw Markdown string before passing it to the renderer.
 // This strips any injected <script>, event handlers, or malicious HTML
-// that could be embedded in the Markdown source — PRD requirement.
+// that could be embedded in the Markdown source.
 const sanitize = (raw: string): string =>
   DOMPurify.sanitize(raw, {
     ALLOWED_TAGS: [
@@ -74,6 +75,7 @@ const PostPage = () => {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!id) return;
@@ -89,9 +91,15 @@ const PostPage = () => {
       setLoading(false);
     };
 
-    // PRD: analytics events written on each post view
+    // analytics events written on each post view
     const recordView = async () => {
-      await supabase.rpc("increment_post_views", { post_id: id });
+      const { data, error } = await supabase.functions.invoke(
+        "track-post-view",
+        {
+          body: { post_id: id, user_id: user?.id ?? null },
+        },
+      );
+      console.log("track-post-view response:", data, error);
     };
 
     void fetchPost();
@@ -153,7 +161,6 @@ const PostPage = () => {
         </div>
       )}
 
-      {/* ── PRD: post content rendered as sanitized HTML ── */}
       <div className="prose prose-gray max-w-none">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {sanitizedContent}
